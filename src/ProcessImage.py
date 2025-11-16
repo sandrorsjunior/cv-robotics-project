@@ -16,8 +16,8 @@ class ProcessImage:
             raise FileExistsError(f"It was impossible load the image from the path: {self.image_path}")
         return img
 
-    def convert_to_grayscale(self):
-        return cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+    def convert_to_grayscale(self, img):
+        return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     def convert_to_hsv(self, img):
         return cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -26,6 +26,13 @@ class ProcessImage:
     def save_image(filename, img):
         cv2.imwrite(filename, img)
         print(f" -> Imagem '{filename}' salva.")
+    
+    @staticmethod
+    def show_image(title, img):
+        cv2.imshow(title, img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
 
     def apply_color_mask(self, hsv_image, lower_bound, upper_bound):
         if hsv_image is not None:
@@ -45,9 +52,9 @@ class ProcessImage:
         kernel = np.ones(kernel_size, np.uint8) 
         return cv2.morphologyEx(self.image, cv2.MORPH_GRADIENT, kernel)
     
-    def remove_noise(self, mascara, kernel = np.ones((5,5), np.uint8)):
-        mascara = cv2.dilate(mascara, kernel)
-        mascara = cv2.erode(mascara, kernel)
+    def remove_noise(self, mascara, kernel_dilate = np.ones((5,5), np.uint8), kernel_erode = np.ones((5,5), np.uint8)):
+        mascara = cv2.dilate(mascara, kernel_dilate)
+        mascara = cv2.erode(mascara, kernel_erode)
         return mascara
     
     def segmentation_by_color(self, color_range, img):
