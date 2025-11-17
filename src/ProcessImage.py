@@ -70,12 +70,19 @@ class ProcessImage:
         mascara = cv2.dilate(mascara, kernel_dilate)
         mascara = cv2.erode(mascara, kernel_erode)
         return mascara
+
+    def smooth_with_morphology(self, img, kernel_size=(5, 5)):
+        
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, kernel_size)
+
+        opened_img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+        smoothed_img = cv2.morphologyEx(opened_img, cv2.MORPH_CLOSE, kernel)
+        return smoothed_img
     
     def segmentation_by_color(self, color_range, img):
         img_HSV = self.convert_to_hsv(img)
         mask = np.zeros(img_HSV.shape[:2], dtype=np.uint8)
 
-        # color_range is a list of [lower_bound, upper_bound] pairs
         for r in color_range:
             lower_bound = np.array(r[0])
             upper_bound = np.array(r[1])
