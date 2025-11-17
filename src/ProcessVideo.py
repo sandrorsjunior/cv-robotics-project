@@ -33,7 +33,7 @@ def detect_colors_webcam(colors_to_detect, sigma=50):
 
         color_segment = cv2.bitwise_and(frame, frame, mask=clean_mask)
 
-        cv2.imshow('Mascara Combinada', clean_mask)
+        cv2.imshow('Mascara Combinada', color_segment)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     # Defina aqui a lista de cores (em BGR) que você quer detectar
     cores_alvo = [
         (0, 0, 255),  # Vermelho/Laranja que você estava usando
+        (0, 255, 0),  # Verde puro
         (255, 0, 0)   # Azul puro
     ]
     detect_colors_webcam(cores_alvo)
