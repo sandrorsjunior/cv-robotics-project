@@ -3,30 +3,37 @@ import numpy as np
 from ProcessImage import ProcessImage
 
 
-def detect_red_color_webcam():
+def detect_colors_webcam(colors_to_detect, sigma=50):
+    """
+    Detecta uma lista de cores a partir da webcam.
+    :param colors_to_detect: Uma lista de tuplas de cores em BGR. Ex: [(B1,G1,R1), (B2,G2,R2)]
+    """
     processImage = ProcessImage()
     cap = cv2.VideoCapture(0)
-    
+
     if not cap.isOpened():
         print("Erro: Não foi possível abrir a webcam.")
         return
 
-    red_color_limits = processImage.calculate_hsv_bounds((70, 82, 231))
+    all_color_limits = []
+    for color_bgr in colors_to_detect:
+        limits = processImage.calculate_hsv_bounds(color_bgr, sigma=sigma)
+        all_color_limits.extend(limits)
 
-    print("🔴 Pressione 'q' para sair da aplicação.")
+    print("Pressione 'q' para sair da aplicação.")
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-        red_mask = processImage.segmentation_by_color(red_color_limits, frame)
+        combined_mask = processImage.segmentation_by_color(all_color_limits, frame)
 
-        clean_mask = processImage.remove_noise(red_mask)
+        clean_mask = processImage.remove_noise(combined_mask)
 
-        red_segment = cv2.bitwise_and(frame, frame, mask=clean_mask)
-        
-        cv2.imshow('Detecção de Vermelho', red_mask)
+        color_segment = cv2.bitwise_and(frame, frame, mask=clean_mask)
+
+        cv2.imshow('Mascara Combinada', clean_mask)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -35,4 +42,9 @@ def detect_red_color_webcam():
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    detect_red_color_webcam()
+    # Defina aqui a lista de cores (em BGR) que você quer detectar
+    cores_alvo = [
+        (0, 0, 255),  # Vermelho/Laranja que você estava usando
+        (255, 0, 0)   # Azul puro
+    ]
+    detect_colors_webcam(cores_alvo)
