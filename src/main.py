@@ -43,3 +43,23 @@ if __name__ == "__main__":
                                                        kernel_erode=np.ones((3,3), np.uint8))
 
     ProcessImage.save_image("./tasks/ex3/BinaryImg_processed.jpg", img_no_noise)
+
+
+    #*******************************************************************
+    #                               TASK 4
+    #*******************************************************************
+    processImage_head = ProcessImage("assets/head_gaussian_noise.png")
+    
+    # Converte para escala de cinza, onde as operações morfológicas para remoção de ruído são mais eficazes
+    gray_head_image = processImage_head.convert_to_grayscale(processImage_head.image)
+    ProcessImage.save_image("./tasks/ex4/head_original_gray.png", gray_head_image)
+
+    # Experimenta diferentes tamanhos de kernel
+    kernel_sizes = [(3, 3), (5, 5), (7, 7)]
+    print("Analisando o efeito de diferentes tamanhos de kernel:")
+
+    for size in kernel_sizes:
+        print(f" -> Aplicando kernel de tamanho {size}...")
+        smoothed_img = processImage_head.smooth_with_morphology(gray_head_image, kernel_size=size)
+        filename = f"./tasks/ex4/head_smoothed_kernel_{size[0]}x{size[1]}.jpg"
+        ProcessImage.save_image(filename, smoothed_img)
