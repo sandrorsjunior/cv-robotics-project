@@ -3,17 +3,31 @@ import numpy as np
 
 class ProcessImage:
     
-    def __init__(self, image_path):
+    def __init__(self, image_path=None, rate=1):
+        self.rate = rate
+        self.h = None
+        self.w = None
         self.image_path = image_path
-        self.image = self._load_image()
-        self.h, self.w = self.image.shape[:2]
-        self.rate = 1
+
+        if image_path is not None:
+            self.image = self._load_image()
+        else:
+            self.image = None
+        
+    
+    def set_image(self, image):
+        self.image = image
+        self.h, self.w = image.shape[:2]
+        self.image = cv2.resize(self.image, (self.w // self.rate, self.h // self.rate))
 
 
     def _load_image(self):
         img = cv2.imread(self.image_path)
+        self.h, self.w = img.shape[:2]
+        img = cv2.resize(img, (self.w // self.rate, self.h // self.rate))
         if img is None:
             raise FileExistsError(f"It was impossible load the image from the path: {self.image_path}")
+        
         return img
 
     def convert_to_grayscale(self, img):
@@ -59,7 +73,13 @@ class ProcessImage:
     
     def segmentation_by_color(self, color_range, img):
         img_HSV = self.convert_to_hsv(img)
-        mask = cv2.inRange(img_HSV, color_range[0], color_range[1])
+        mask = np.zeros(img_HSV.shape[:2], dtype=np.uint8)
+
+        # color_range is a list of [lower_bound, upper_bound] pairs
+        for r in color_range:
+            lower_bound = np.array(r[0])
+            upper_bound = np.array(r[1])
+            mask += cv2.inRange(img_HSV, lower_bound, upper_bound)
         return mask
     
     def map_distinct_colors(self, background_color):
@@ -98,27 +118,65 @@ class ProcessImage:
         return (chanel_b, chanel_g, chanel_r)
     
     def calculate_hsv_bounds(self, bgr_color_tuple, sigma=15):
-        
+    
         B, G, R = bgr_color_tuple
         bgr_array = np.uint8([[[B, G, R]]])
+        # Supondo que self.convert_to_hsv usa cv2.COLOR_BGR2HSV (Escala H: 0-179)
         hsv_array = self.convert_to_hsv(bgr_array)
         
         H, S, V = hsv_array[0, 0]
 
         sigma_H = sigma // 2 
         sigma_SV = sigma
+
+        # Limites brutos (podem estar fora do range 0-179)
+        h_min_raw = int(H) - sigma_H
+        h_max_raw = int(H) + sigma_H
         
-        h_min = np.clip(int(H) - sigma_H, 0, 179)
+        # Saturação e Valor não atravessam (São sempre 0-255)
         s_min = np.clip(int(S) - sigma_SV, 0, 255)
         v_min = np.clip(int(V) - sigma_SV, 0, 255)
-        
-        # --- Cálculo dos Limites Superior (top) ---
-        
-        h_max = np.clip(int(H) + sigma_H, 0, 179)
         s_max = np.clip(int(S) + sigma_SV, 0, 255)
         v_max = np.clip(int(V) + sigma_SV, 0, 255)
         
-        down = (int(h_min), int(s_min), int(v_min))
-        top = (int(h_max), int(s_max), int(v_max))
+        # --- Verificação do Wrap Around (Atravessando o Zero) ---
         
-        return [down, top]
+        if h_min_raw < 0 or h_max_raw > 179:
+            
+            # O intervalo cruza o limite 0/179 (É vermelho)
+            
+            # Se H_min for negativo, ele atravessa 0 (ex: 5 - 10 = -5)
+            if h_min_raw < 0:
+                h_min_banda1 = 0
+                h_max_banda1 = h_max_raw # Onde o intervalo termina no lado positivo
+                
+                h_min_banda2 = 179 + h_min_raw # Retorna do lado 179 (ex: 179 + (-5) = 174)
+                h_max_banda2 = 179
+                
+            # Se H_max ultrapassar 179 (ex: 175 + 10 = 185)
+            else: # h_max_raw > 179
+                h_min_banda1 = h_min_raw # Onde o intervalo começa no lado positivo
+                h_max_banda1 = 179
+                
+                h_min_banda2 = 0
+                h_max_banda2 = h_max_raw - 180 # Retorna do lado 0 (ex: 185 - 180 = 5)
+
+            down1 = (h_min_banda1, s_min, v_min)
+            top1  = (h_max_banda1, s_max, v_max)
+            
+            down2 = (h_min_banda2, s_min, v_min)
+            top2  = (h_max_banda2, s_max, v_max)
+            
+            # Retorna uma lista de dois pares de limites
+            return [[down1, top1], [down2, top2]]
+
+        else:
+            # Não atravessa o zero, pode usar o cálculo simples de clip.
+            h_min = h_min_raw
+            h_max = h_max_raw
+            
+            down = (int(h_min), int(s_min), int(v_min))
+            top = (int(h_max), int(s_max), int(v_max))
+            
+            # Retorna uma lista com apenas um par de limites
+            return [[down, top]]
